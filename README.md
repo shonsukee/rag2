@@ -1,4 +1,4 @@
-# RAG環境を用いたSwitchBot APIの自動修復技術のサポート
+# RAGを用いたSwitchBot APIの自動修復
 
 ## About
 
