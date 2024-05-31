@@ -8,16 +8,15 @@ RAG環境を用いて，事前に格納したDBの情報を基に，生成AIが�
 ## Premise
 
 - OpenAI APIが必要です（有料）
-- DatastaxのAstraDBをセットアップしておく必要があります
-- AstraDBのAPI Key等の情報が必要です（無料枠有）
+- Pinecone DBをセットアップしておく必要があります
+- PineconeのAPI Key等の情報が必要です（無料枠有）
 
 ## Package
 
-- openai		== 1.13.3
+- openai		== 1.30.1
 - streamlit		== 1.31.1
-- cassio		== 0.1.5
 - langchain		== 0.1.9
-
+- llama-index	== 0.10.4
 
 ## Usage
 
