@@ -9,10 +9,10 @@ load_dotenv()
 client = OpenAI()
 
 # Pinecone APIキーの設定と初期化
-pc = Pinecone(api_key=os.environ.get("PINECONE_API_KEY"))
+pc = Pinecone(api_key=os.environ.get("PINECONE_IOT_API_KEY"))
 
 # インデックスの名前
-index_name = 'switchbot'
+index_name = 'iot-api'
 
 # Pineconeインデックスの作成（既に存在する場合はスキップ）
 if index_name not in pc.list_indexes().names():
@@ -70,11 +70,24 @@ def query_chatgpt_with_vector_db(user_query):
 def similarity_search_query_with_score(user_query):
     """クエリに関連した文章(関連度:0.8以上)と元のクエリをChatGPTに与える"""
     embedding = get_openai_embedding(user_query)
+    if not embedding:
+        return "embedding error", ""
+
     vector_db_response = query_pinecone_index(embedding)
 
-    relevant_info = "\n".join([f"ID: {item['id']}, Score: {item['score']}, Content: {item['metadata']['text']}" for item in vector_db_response if item['score'] >= 0.8])
+    for item in vector_db_response:
+        print("---------------")
+        print("score", item['score'])
 
-    combined_query = f"Answer the following question based on the provided information: {user_query} Relevant information: {relevant_info}"
+    relevant_info = "\n".join([f"ID: {item['id']}, Score: {item['score']}, Content: {item['metadata']}" for item in vector_db_response if item['score'] >= 0.01])
+
+    if not relevant_info:
+        return "関連情報が見つかりませんでした", "no data"
+
+    combined_query = f"""
+    Answer the following question based on the provided information: {user_query}
+    Relevant information: {relevant_info}
+    """
 
     chatgpt_response = client.chat.completions.create(
         model="gpt-3.5-turbo",
@@ -84,7 +97,7 @@ def similarity_search_query_with_score(user_query):
         ]
     )
 
-    return chatgpt_response.choices[0].message.content
+    return chatgpt_response.choices[0].message.content, relevant_info
 
 # StreamlitでGUI化
 st.title("Modify Switchbot API specifications")
@@ -95,21 +108,27 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        if message["role"] == "assistant":
+            with st.expander("詳細"):
+                st.write(message["expandar_content"])
 
-# ユーザーの入力が送信された際に実行される処理
+
 if prompt := st.chat_input("SwitchBot API v1.1について知りたいことはありますか?"):
-    # ユーザの入力をチャット履歴に追加する
-    st.session_state.messages.append({"role": "user", "content": prompt})
+	# ユーザの入力をチャット履歴に追加
+	st.session_state.messages.append({"role": "user", "content": prompt})
 
-    # ユーザの入力を表示する
-    with st.chat_message("user"):
-        st.markdown(prompt)
+	# ユーザの入力を表示
+	with st.chat_message("user"):
+		st.markdown(prompt)
 
-    response = similarity_search_query_with_score(prompt)
+	with st.spinner('Wait for it...'):
+		response, relevant_info = similarity_search_query_with_score(prompt)
 
-    # ChatBotの返答を表示する
-    with st.chat_message("assistant"):
-        st.markdown(response)
+	# ChatBotの返答を表示
+	with st.chat_message("assistant"):
+		st.markdown(response)
+		with st.expander("詳細"):
+			st.write(relevant_info)
 
-    # ChatBotの返答をチャット履歴に追加する
-    st.session_state.messages.append({"role": "assistant", "content": response})
+	# ユーザの入力に関連する情報とChatBotの返答をチャット履歴に追加
+	st.session_state.messages.append({"role": "assistant", "content": response, "expandar_content": relevant_info})
