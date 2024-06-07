@@ -25,8 +25,6 @@ def cosine_similarity(v1, v2):
 
 def similarity_search_query_with_score(user_query):
     """クエリに関連した文章(関連度:0.8以上)と元のクエリをChatGPTに与える"""
-    # astra_vector_index = VectorStoreIndexWrapper(vectorstore=astra_vector_store)
-    # context = astra_vector_index.query(user_query).strip()
     similarities = []
     context = ""
     for doc, score in astra_vector_store.similarity_search_with_score(user_query, k=4):
@@ -38,8 +36,6 @@ def similarity_search_query_with_score(user_query):
 
     if context == "":
         return "関連情報が見つかりませんでした", "", average_similarity
-
-    # combined_query = f"Answer the following question based on the provided information: {user_query} Relevant information: {context}"
 
     combined_query = f"""
         You are an API-specific AI assistant, Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, can I help with anything else, don't try to make up an answer. Keep the answer as concise as possible. Answer in Japanese.
