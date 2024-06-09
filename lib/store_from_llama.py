@@ -4,14 +4,15 @@ from dotenv import load_dotenv
 import os
 from pinecone import Pinecone, ServerlessSpec
 from llama_index.core import Settings
+from llama_index import ServiceContext
 
 load_dotenv()
 
 # Pineconeの初期化
-pc = Pinecone(api_key=os.environ.get('PINECONE_IOT_API_KEY'))
+pc = Pinecone(api_key=os.environ.get('PINECONE_LLAMA_API_KEY'))
 
 # インデックスの作成
-index_name = 'iot-api'
+index_name = 'switchbot-llama'
 if index_name not in pc.list_indexes().names():
     pc.create_index(
         name=index_name,
@@ -28,15 +29,24 @@ pinecone_index = pc.Index(index_name)
 
 # ベクトルストアとストレージコンテキストの設定
 vector_store = PineconeVectorStore(pinecone_index)
-storage_context = StorageContext.from_defaults(vector_store=vector_store)
+# storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
+service_context = ServiceContext.from_defaults(
+    chunk_size=350
+)
 
 # ドキュメントの読み込み
 documents = SimpleDirectoryReader('../data').load_data()
 
-Settings.chunk_size = 256
-Settings.chunk_overlap = 50
+
+# Settings.chunk_size = 350
+# Settings.chunk_overlap = 50
 
 # インデックスの作成
 index = VectorStoreIndex.from_documents(
-    documents, storage_context=storage_context
+    documents,
+    service_context=service_context
 )
+query_engine = index.as_query_engine()
+response = query_engine.query("SwitchBot API v1.1に必要なヘッダーはなんですか？")
+print(response)

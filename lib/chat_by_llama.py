@@ -16,7 +16,7 @@ client = OpenAI()
 pc = Pinecone(api_key=os.environ.get("PINECONE_IOT_API_KEY"))
 
 # Pineconeインデックスの設定
-index_name = 'iot-api'
+index_name = 'switchbot-llama'
 pinecone_index = pc.Index(index_name)
 
 # PineconeVectorStoreの設定
@@ -24,74 +24,87 @@ vector_store = PineconeVectorStore(pinecone_index)
 index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
 # クエリエンジンの設定
-query_engine = index.as_query_engine()
+# .as_query_engineから.queryすると関連情報から推論した情報を出力してしまい，内部での動きが見えなかった
+# したがって.as_retrieverに変更することによってインデックスのみ抽出することにした．
+# query_engine = index.as_query_engine(similarity_top_k=4)
 
-def get_openai_embedding(text):
-    response = client.embeddings.create(
-        input=[text],
-        model="text-embedding-3-small"
-    )
-
-    return response.data[0].embedding
-
-def cosine_similarity(v1, v2):
-    return np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))
+retriever = index.as_retriever(search_kwargs={"k": 5})
 
 # ユーザー入力に関連するインデックスを検索する関数
 def query_index(user_query):
-    query_embedding = get_openai_embedding(user_query)
-    context = query_engine.query(user_query)
-    context = context.response
+    context = ""
+    similarities = []
+    i = 0
+    context_nodes = retriever.retrieve(user_query)
+    for node in context_nodes:
+        # Node Postprocessorでノードをフィルタリングできる
+        # nodes = index.as_retriever().retrieve("test query str")
+        # # filter nodes below 0.75 similarity score
+        # processor = SimilarityPostprocessor(similarity_cutoff=0.75)
+        # filtered_nodes = processor.postprocess_nodes(nodes)
+        if node.score >= 0.0:
+            i += 1
+            context += f"""
+                Context number {i} (score: {node.score}):
+                {node.text}
+            """
+            similarities.append(node.score)
 
-    doc_embedding = get_openai_embedding(context)
-    similarity = cosine_similarity(query_embedding, doc_embedding)
-
+    similarity = np.mean(similarities)
     combined_query = f"""
-        You are an API-specific AI assistant, Use the following pieces of context to answer the question at the end. Keep the answer as concise as possible. Answer in Japanese.
-        Context: {context}
-        Question: {user_query}
-        Answer:
-   """
+        ### Context
+        {context}
+
+        ### Input Data
+        {user_query}
+
+        ### Output Indicator
+        Follow the contextual information. Make all modifications in the function except for imports. Keep the answer as concise as possible. Output only code.
+    """
 
     chatgpt_response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": "You are an API-specific AI assistant, Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, can I help with anything else, don't try to make up an answer. Keep the answer as concise as possible. Answer in Japanese."},
+            {"role": "system", "content": ""},
             {"role": "user", "content": combined_query}
         ]
     )
     return chatgpt_response.choices[0].message.content, context, similarity
 
-# streamlitでGUI表示
-st.title("API検索アシスタント")
+def main():
+    # streamlitでGUI表示
+    st.title("API search assistant")
 
-if "messages" not in st.session_state:
-    st.session_state["messages"] = []
+    if "messages" not in st.session_state:
+        st.session_state["messages"] = []
 
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        if message["role"] == "assistant":
-            st.write("関連度: ", message['similarity'])
-            st.write(message["content"])
-            with st.expander("詳細"):
-                st.write(message["expandar_content"])
-        else:
-            st.write(message["content"])
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            if message["role"] == "assistant":
+                st.write("score: ", message['similarity'])
+                st.write(message["content"])
+                with st.expander("detail"):
+                    st.write(message["expandar_content"])
+            else:
+                st.write(message["content"])
 
-if prompt := st.chat_input("検索したい内容を入力してください:"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    if prompt := st.chat_input("Please enter what you want to search for:"):
+        st.session_state.messages.append({"role": "user", "content": prompt})
 
-    with st.chat_message("user"):
-        st.write(prompt)
+        with st.chat_message("user"):
+            st.write(prompt)
 
-    with st.spinner('検索中...'):
-        response, relevant_info, similarity = query_index(prompt)
+        with st.spinner('searching...'):
+            response, relevant_info, similarity = query_index(prompt)
 
-    with st.chat_message("assistant"):
-        st.write("関連度: ", similarity)
-        st.write(response)
-        if response != "関連情報が見つかりませんでした":
-            with st.expander("詳細"):
-                st.write(relevant_info)
+        with st.chat_message("assistant"):
+            st.write("score: ", similarity)
+            st.write(response)
+            if response != "Relevant information not found.":
+                with st.expander("detail"):
+                    st.write(relevant_info)
 
-    st.session_state.messages.append({"role": "assistant", "content": response, "expandar_content": relevant_info, "similarity": similarity})
+        st.session_state.messages.append({"role": "assistant", "content": response, "expandar_content": relevant_info, "similarity": similarity})
+
+if __name__ == "__main__":
+    main()
