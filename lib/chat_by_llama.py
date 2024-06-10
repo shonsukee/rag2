@@ -23,11 +23,6 @@ pinecone_index = pc.Index(index_name)
 vector_store = PineconeVectorStore(pinecone_index)
 index = VectorStoreIndex.from_vector_store(vector_store=vector_store)
 
-# クエリエンジンの設定
-# .as_query_engineから.queryすると関連情報から推論した情報を出力してしまい，内部での動きが見えなかった
-# したがって.as_retrieverに変更することによってインデックスのみ抽出することにした．
-# query_engine = index.as_query_engine(similarity_top_k=4)
-
 retriever = index.as_retriever(search_kwargs={"k": 5})
 
 # ユーザー入力に関連するインデックスを検索する関数
@@ -37,12 +32,7 @@ def query_index(user_query):
     i = 0
     context_nodes = retriever.retrieve(user_query)
     for node in context_nodes:
-        # Node Postprocessorでノードをフィルタリングできる
-        # nodes = index.as_retriever().retrieve("test query str")
-        # # filter nodes below 0.75 similarity score
-        # processor = SimilarityPostprocessor(similarity_cutoff=0.75)
-        # filtered_nodes = processor.postprocess_nodes(nodes)
-        if node.score >= 0.0:
+        if node.score >= 0.75:
             i += 1
             context += f"""
                 Context number {i} (score: {node.score}):
@@ -52,6 +42,9 @@ def query_index(user_query):
 
     similarity = np.mean(similarities)
     combined_query = f"""
+        ### Instruction
+        You are an API-specific AI assistant, use the following pieces of context to answer the requirement at the end. If you don't know the answer, just say that you don't know, can I help with anything else, don't try to make up an answer.
+
         ### Context
         {context}
 
@@ -65,7 +58,7 @@ def query_index(user_query):
     chatgpt_response = client.chat.completions.create(
         model="gpt-3.5-turbo",
         messages=[
-            {"role": "system", "content": ""},
+            {"role": "system", "content": "You are ChatBot answering questions about SwitchBot API. Relevant information must be followed."},
             {"role": "user", "content": combined_query}
         ]
     )
