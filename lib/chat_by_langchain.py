@@ -1,6 +1,5 @@
-# DBに格納されている情報を付随させて質問していく
+# LangChain to AstraDB
 from langchain.vectorstores.cassandra import Cassandra
-from langchain.indexes.vectorstore import VectorStoreIndexWrapper
 from langchain.embeddings import OpenAIEmbeddings
 import cassio
 import os
