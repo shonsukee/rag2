@@ -1,29 +1,33 @@
-# Automatic correction of REST API misuse using Retrieval-Augmented Generation
+# RAGを用いたSwitchBot APIの自動修復
 
 ## About
 
-　Retrieval-Augmented Generation (RAG) is a technique that combines text generation by Large Language Models (LLMs) with retrieval of external information to improve response accuracy. By combining the retrieval of external information, it is expected to make it easier to update the output of the LLM with the latest information, clarify the basis of the output results, and suppress the phenomenon of generating information that is not based on facts (hallucination).
+RAG環境を用いて，事前に格納したDBの情報を基に，生成AIが開発過程をサポートすることができます．
+今回は SwitchBot API v1.1 のドキュメントを格納するよう設定していますが，お好みで変更することもできます．
 
 ## Premise
 
-- OpenAI API (charge)
-- Pinecone API Key (free)
+- OpenAI APIが必要です（有料）
+- Pinecone DBをセットアップしておく必要があります
+- PineconeのAPI Key等の情報が必要です（無料枠有）
 
 ## Package
 
-| library                                | version |
-|-------------------------------------------|------------|
-| openai                                    | 1.31.2     |
-| streamlit                                 | 1.35.0     |
-| langchain                                 | 0.1.8      |
-| llama-index                               | 0.10.43    |
-| llama-index-core                          | 0.10.43    |
-| llama-index-vector-stores-pinecone        | 0.1.7      |
-| cassio                                    | 0.1.7      |
-| pinecone-client                           | 3.2.2      |
+- openai		== 1.30.1
+- streamlit		== 1.31.1
+- langchain		== 0.1.9
+- llama-index	== 0.10.4
 
 ## Usage
+
+### CUIで実行
 ```
-$ cd /lib
-$ streamlit run chat_by_llama.py
+> python3 chat_with_cui.py
+```
+
+### GUIで実行
+```
+> python3 store.py
+
+> streamlit run chat.py
 ```
