@@ -1,0 +1,53 @@
+
+
+**output code**
+```python
+class SwitchBotAPI:
+    
+    base_url = "https://api.switch-bot.com"
+    token = False
+    secret = ''  # Initialize secret key
+    version = "v1.1"  # Updated to v1.1
+    
+    def __init__(self, token=False, secret=False) -> None:
+        if token:
+            self.token = token
+        else:
+            self.token = lifestream.config.get("switchbot", "token")
+        
+        if secret:
+            self.secret = secret
+        else:
+            self.secret = lifestream.config.get("switchbot", "secret")
+
+    def generate_signature(self):
+        nonce = uuid.uuid4()
+        t = int(round(time.time() * 1000))
+        string_to_sign = '{}{}{}'.format(self.token, t, nonce)
+        
+        string_to_sign = bytes(string_to_sign, 'utf-8')
+        secret = bytes(self.secret, 'utf-8')
+        
+        sign = base64.b64encode(hmac.new(secret, msg=string_to_sign, digestmod=hashlib.sha256).digest())
+        
+        return {
+            'Authorization': self.token,
+            't': str(t),
+            'sign': str(sign, 'utf-8'),
+            'nonce': str(nonce),
+            'Content-Type': 'application/json',
+            'charset': 'utf8'
+        }
+
+    def call(self, method, callname, data={}):
+        URL = '{}/{}/{}'.format(self.base_url, self.version, callname)
+        
+        headers = self.generate_signature()
+
+        if method == 'post':
+            r = requests.post(URL, data=json.dumps(data), headers=headers)
+        elif method == 'get':
+            r = requests.get(URL, params=data, headers=headers)
+
+        return r.json()
+```

@@ -1,0 +1,77 @@
+**input code**
+### Instruction
+You are an API-specific AI assistant, use the following pieces of context to answer the requirement at the end. If you don't know the answer, just say that you don't know, can I help with anything else, don't try to make up an answer.
+
+### Context
+## API name to be modified
+SwitchBot API
+
+### Input Data
+## Code for previous specification
+```
+BASE_END_POINT = 'https://api.switch-bot.com'
+devices = requests.get(
+	url=BASE_END_POINT + '/v1.0/devices',
+	headers={
+		'Authorization': os.environ['SWITCH_BOT_OPEN_TOKEN']
+	}
+).json()['body']
+```
+
+### Output Indicator
+First, you read the code and the context corresponding to the previous specification in turn and identify any new information or changes. **Follow the contextual information when making modifications. Be carefulAuthorization.** Make all modifications in the function except for imports. Keep the answer as concise as possible. Output only code.
+
+**output code**
+```python
+class SwitchBotAPI:
+    
+    base_url = "https://api.switch-bot.com"
+    token = False
+    secret_key = False
+    version = "v1.1"
+    
+    def __init__(self, token=False, secret_key=False) -> None:
+        if token:
+            self.token = token
+        else:
+            self.token = lifestream.config.get("switchbot", "token")
+        
+        if secret_key:
+            self.secret_key = secret_key
+        else:
+            self.secret_key = lifestream.config.get("switchbot", "secret_key")
+
+    def generate_headers(self):
+        import time, uuid, hmac, hashlib, base64
+        
+        nonce = uuid.uuid4()
+        t = int(round(time.time() * 1000))
+        string_to_sign = '{}{}{}'.format(self.token, t, nonce)
+        
+        string_to_sign = bytes(string_to_sign, 'utf-8')
+        secret = bytes(self.secret_key, 'utf-8')
+        
+        sign = base64.b64encode(hmac.new(secret, msg=string_to_sign, digestmod=hashlib.sha256).digest()).decode('utf-8')
+        
+        headers = {
+            'Authorization': self.token,
+            'Content-Type': 'application/json; charset=utf8',
+            't': str(t),
+            'sign': str(sign),
+            'nonce': str(nonce)
+        }
+        
+        return headers
+
+    def call(self, method, callname, data={}):
+        URL = '{}/{}/{}'.format(self.base_url, self.version, callname)
+        
+        headers = self.generate_headers()
+
+        if method == 'post':
+            r = requests.post(URL, json=data, headers=headers)
+        elif method == 'get':
+            r = requests.get(URL, params=data, headers=headers)
+
+        return r.json()
+```

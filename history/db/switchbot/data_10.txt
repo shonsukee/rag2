@@ -1,0 +1,29 @@
+**output code**
+```python
+    def _headers(self):
+        import uuid
+        import time
+        import hmac
+        import hashlib
+        import base64
+
+        secret = '' # copy and paste from the SwitchBot app V6.14 or later
+        nonce = uuid.uuid4()
+        t = int(round(time.time() * 1000))
+        string_to_sign = '{}{}{}'.format(self.token, t, nonce)
+        
+        string_to_sign = bytes(string_to_sign, 'utf-8')
+        secret = bytes(secret, 'utf-8')
+        
+        sign = base64.b64encode(hmac.new(secret, msg=string_to_sign, digestmod=hashlib.sha256).digest())
+        
+        return {
+            "Content-Type": "application/json",
+            "Authorization": self.token,
+            "charset": "utf8",
+            "t": str(t),
+            "sign": str(sign, 'utf-8'),
+            "nonce": str(nonce),
+            "user-agent": f"switchbot-client/{AppConstants.VERSION}",
+        }
+```

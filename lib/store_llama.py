@@ -1,11 +1,9 @@
 # Pineconeへインデックスを格納する
-from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
-from llama_index.core import Settings
+from llama_index.core import SimpleDirectoryReader, VectorStoreIndex, StorageContext, Settings
 from dotenv import load_dotenv
 from pinecone import Pinecone
 import os
 from llama_index.vector_stores.pinecone import PineconeVectorStore
-from llama_index.core import StorageContext
 import logging
 import sys
 
@@ -22,7 +20,7 @@ def initialize_pinecone():
 	pc = Pinecone(api_key=os.environ.get('PINECONE_LLAMA_API_KEY'))
 
 # DBへ入力クエリとLLMからの回答を保存
-def insert_query_response_to_db(index_name = "switchbot-llama", input_dir = "../data", chunk_size = 350, chunk_over_lap = 50):
+def insert_query_response_to_db(index_name = "revision-history", input_dir = "../data", chunk_size = 512, chunk_over_lap = 50):
 	global pc
 
 	if pc is None:
@@ -60,3 +58,4 @@ if __name__ == "__main__":
 
 
 # https://zenn.dev/kun432/scraps/81813cf6d4e359
+# indexはdimensionが1536のものを選ぶ
